@@ -685,6 +685,8 @@ void Player::StopRunning()
 void Player::ScheduleNextFrame(bool prerolling)
 {
     AVPacket pkt;
+    void *frame;
+    int ret;
 
     if (serial_fd > 0 && packet_queue_get(&dataqueue, &pkt, 0)) {
         if (pkt.data[0] != ' '){
@@ -704,12 +706,13 @@ void Player::ScheduleNextFrame(bool prerolling)
                                        pix,
                                        bmdFrameFlagDefault,
                                        &videoFrame);
-    void *frame;
-    int got_picture;
     videoFrame->GetBytes(&frame);
 
-    avcodec_decode_video2(video.codec, avframe, &got_picture, &pkt);
-    if (got_picture) {
+    avcodec_send_packet(video.codec, &pkt);
+
+    // TODO: support receiving multiple frames
+    ret = avcodec_receive_frame(video.codec, avframe);
+    if (ret >= 0) {
         uint8_t *data[4];
         int linesize[4];
 
